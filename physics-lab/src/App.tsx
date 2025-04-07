@@ -3,6 +3,7 @@ import { Container, Typography, Box, Tabs, Tab } from '@mui/material';
 import { DataTable } from './components/lab/DataTable';
 import { ResistanceChart } from './components/lab/ResistanceChart';
 import LabDescription from './components/lab/LabDescription';
+import { LabStats } from './components/lab/LabStats';
 
 interface TabPanelProps {
     children?: React.ReactNode;
@@ -41,6 +42,7 @@ function App() {
                 </Typography>
                 
                 <LabDescription />
+                <LabStats />
 
                 <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 4 }}>
                     <Tabs

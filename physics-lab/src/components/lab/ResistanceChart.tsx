@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     LineChart,
     Line,
@@ -7,9 +7,10 @@ import {
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    Legend
+    Legend,
+    ReferenceLine
 } from 'recharts';
-import { Paper, Typography, Box } from '@mui/material';
+import { Paper, Typography, Box, Fade, Switch, FormControlLabel } from '@mui/material';
 import { useMeasurements } from '../../context/MeasurementsContext';
 
 /**
@@ -17,92 +18,169 @@ import { useMeasurements } from '../../context/MeasurementsContext';
  */
 export const ResistanceChart: React.FC = () => {
     const { measurements } = useMeasurements();
+    const [showGrid, setShowGrid] = useState(true);
+    const [showPoints, setShowPoints] = useState(true);
 
-    const chartData = measurements
+    const validData = measurements
         .filter(m => m.inverse_temperature !== null && m.ln_conductance !== null)
         .map(m => ({
-            inverse_temperature: m.inverse_temperature,
-            ln_conductance: m.ln_conductance,
-            temperature_c: m.temperature_c // добавляем для отображения в подсказке
+            id: m.id,
+            inverseTemp: m.inverse_temperature!,
+            lnConductance: m.ln_conductance!,
+            tooltip: {
+                temp: m.temperature_c?.toFixed(1),
+                resistance: m.resistance?.toFixed(2)
+            }
         }))
-        .sort((a, b) => (a.inverse_temperature || 0) - (b.inverse_temperature || 0));
+        .sort((a, b) => a.inverseTemp - b.inverseTemp);
 
-    const CustomTooltip = ({ active, payload, label }: any) => {
-        if (active && payload && payload.length) {
-            return (
-                <Paper sx={{ p: 1.5, boxShadow: 2 }}>
-                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                        Температура: {payload[0].payload.temperature_c?.toFixed(1)}°C
+    if (validData.length === 0) {
+        return (
+            <Fade in={true}>
+                <Paper sx={{ p: 3, textAlign: 'center' }}>
+                    <Typography variant="h6" color="text.secondary">
+                        Нет данных для построения графика
                     </Typography>
-                    <Typography variant="body2">
-                        1/T: {payload[0].payload.inverse_temperature.toExponential(4)} K⁻¹
-                    </Typography>
-                    <Typography variant="body2">
-                        lnG: {payload[0].payload.ln_conductance.toFixed(4)}
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Добавьте измерения в таблицу
                     </Typography>
                 </Paper>
-            );
-        }
-        return null;
-    };
+            </Fade>
+        );
+    }
+
+    // Рассчитываем линию тренда
+    const n = validData.length;
+    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+    validData.forEach(point => {
+        sumX += point.inverseTemp;
+        sumY += point.lnConductance;
+        sumXY += point.inverseTemp * point.lnConductance;
+        sumX2 += point.inverseTemp * point.inverseTemp;
+    });
+
+    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+
+    const trendLineData = [
+        { inverseTemp: validData[0].inverseTemp, trendLnG: slope * validData[0].inverseTemp + intercept },
+        { inverseTemp: validData[validData.length - 1].inverseTemp, trendLnG: slope * validData[validData.length - 1].inverseTemp + intercept }
+    ];
 
     return (
-        <Paper elevation={3} sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom align="center" sx={{ mb: 3 }}>
-                Зависимость натурального логарифма проводимости от обратной температуры
-            </Typography>
-            <Box sx={{ width: '100%', height: 500 }}>
-                <ResponsiveContainer>
-                    <LineChart
-                        data={chartData}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
-                    >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
-                        <XAxis
-                            dataKey="inverse_temperature"
-                            label={{
-                                value: 'Обратная температура 1/T (K⁻¹)',
-                                position: 'bottom',
-                                offset: 20
-                            }}
-                            tickFormatter={(value) => value.toExponential(2)}
-                            stroke="#666"
-                        />
-                        <YAxis
-                            dataKey="ln_conductance"
-                            label={{
-                                value: 'Логарифм проводимости lnG',
-                                angle: -90,
-                                position: 'insideLeft',
-                                offset: 10
-                            }}
-                            tickFormatter={(value) => value.toFixed(2)}
-                            stroke="#666"
-                        />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend verticalAlign="top" height={36} />
-                        <Line
-                            name="lnG(1/T)"
-                            type="monotone"
-                            dataKey="ln_conductance"
-                            stroke="#1976d2"
-                            strokeWidth={2}
-                            dot={{ r: 5, fill: "#1976d2" }}
-                            activeDot={{
-                                r: 7,
-                                stroke: "#1976d2",
-                                strokeWidth: 2,
-                                fill: "#fff"
-                            }}
-                        />
-                    </LineChart>
-                </ResponsiveContainer>
-            </Box>
-            {chartData.length === 0 && (
-                <Typography variant="body1" align="center" color="text.secondary" sx={{ mt: 3 }}>
-                    Добавьте измерения для отображения графика
+        <Fade in={true}>
+            <Paper sx={{ p: 3 }}>
+                <Typography variant="h6" align="center" gutterBottom>
+                    График зависимости ln(G) от 1/T
                 </Typography>
-            )}
-        </Paper>
+
+                <Box sx={{ mb: 2, display: 'flex', gap: 2, justifyContent: 'center' }}>
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                checked={showGrid}
+                                onChange={(e) => setShowGrid(e.target.checked)}
+                                color="primary"
+                            />
+                        }
+                        label="Сетка"
+                    />
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                checked={showPoints}
+                                onChange={(e) => setShowPoints(e.target.checked)}
+                                color="primary"
+                            />
+                        }
+                        label="Точки"
+                    />
+                </Box>
+
+                <Box sx={{ width: '100%', height: 400 }}>
+                    <ResponsiveContainer>
+                        <LineChart
+                            data={validData}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                        >
+                            {showGrid && <CartesianGrid strokeDasharray="3 3" />}
+                            <XAxis
+                                dataKey="inverseTemp"
+                                tickFormatter={value => value.toExponential(2)}
+                                label={{
+                                    value: '1/T, K⁻¹',
+                                    position: 'bottom',
+                                    offset: 0
+                                }}
+                            />
+                            <YAxis
+                                label={{
+                                    value: 'ln(G)',
+                                    angle: -90,
+                                    position: 'insideLeft'
+                                }}
+                            />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Legend />
+                            
+                            <Line
+                                type="monotone"
+                                dataKey="lnConductance"
+                                name="ln(G)"
+                                stroke="#8884d8"
+                                strokeWidth={2}
+                                dot={showPoints ? { r: 4, strokeWidth: 2 } : false}
+                                activeDot={{ r: 6, strokeWidth: 2 }}
+                            />
+
+                            <Line
+                                data={trendLineData}
+                                type="linear"
+                                dataKey="trendLnG"
+                                name="Линия тренда"
+                                stroke="#82ca9d"
+                                strokeWidth={2}
+                                dot={false}
+                                strokeDasharray="5 5"
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </Box>
+
+                <Box sx={{ mt: 2, textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                        Угловой коэффициент: {slope.toExponential(4)}
+                    </Typography>
+                </Box>
+            </Paper>
+        </Fade>
     );
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+        const data = payload[0].payload;
+        return (
+            <Paper sx={{ p: 1.5, minWidth: '200px' }}>
+                <Typography variant="subtitle2" color="primary" gutterBottom>
+                    Измерение №{data.id}
+                </Typography>
+                <Box sx={{ display: 'grid', gap: 0.5 }}>
+                    <Typography variant="body2">
+                        Температура: {data.tooltip.temp}°C
+                    </Typography>
+                    <Typography variant="body2">
+                        Сопротивление: {data.tooltip.resistance} Ом
+                    </Typography>
+                    <Typography variant="body2">
+                        1/T: {data.inverseTemp.toExponential(4)} K⁻¹
+                    </Typography>
+                    <Typography variant="body2">
+                        ln(G): {data.lnConductance.toFixed(4)}
+                    </Typography>
+                </Box>
+            </Paper>
+        );
+    }
+    return null;
 }; 
