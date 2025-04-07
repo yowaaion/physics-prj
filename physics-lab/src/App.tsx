@@ -1,3 +1,4 @@
+// Импортируем необходимые компоненты и хуки
 import React, { useState } from 'react';
 import { Container, Typography, Box, Tabs, Tab } from '@mui/material';
 import { DataTable } from './components/lab/DataTable';
@@ -5,12 +6,14 @@ import { ResistanceChart } from './components/lab/ResistanceChart';
 import LabDescription from './components/lab/LabDescription';
 import { LabStats } from './components/lab/LabStats';
 
+// Интерфейс для свойств компонента TabPanel
 interface TabPanelProps {
-    children?: React.ReactNode;
-    index: number;
-    value: number;
+    children?: React.ReactNode;  // Содержимое вкладки
+    index: number;  // Индекс вкладки
+    value: number;  // Текущее значение активной вкладки
 }
 
+// Компонент TabPanel - отвечает за отображение содержимого вкладки
 function TabPanel(props: TabPanelProps) {
     const { children, value, index, ...other } = props;
 
@@ -27,23 +30,30 @@ function TabPanel(props: TabPanelProps) {
     );
 }
 
+// Главный компонент приложения
 function App() {
+    // Состояние для хранения индекса активной вкладки
     const [tabValue, setTabValue] = useState(0);
 
+    // Обработчик изменения вкладки
     const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
         setTabValue(newValue);
     };
 
     return (
+        // Контейнер с максимальной шириной lg
         <Container maxWidth="lg">
             <Box sx={{ my: 4 }}>
+                {/* Заголовок приложения */}
                 <Typography variant="h4" component="h1" gutterBottom align="center">
                     Физическая лаборатория
                 </Typography>
                 
+                {/* Компоненты описания и статистики лаборатории */}
                 <LabDescription />
                 <LabStats />
 
+                {/* Панель вкладок */}
                 <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 4 }}>
                     <Tabs
                         value={tabValue}
@@ -56,11 +66,12 @@ function App() {
                     </Tabs>
                 </Box>
 
+                {/* Содержимое вкладок */}
                 <TabPanel value={tabValue} index={0}>
-                    <DataTable />
+                    <DataTable />  {/* Таблица для ввода данных */}
                 </TabPanel>
                 <TabPanel value={tabValue} index={1}>
-                    <ResistanceChart />
+                    <ResistanceChart />  {/* График сопротивления */}
                 </TabPanel>
             </Box>
         </Container>

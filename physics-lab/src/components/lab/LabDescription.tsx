@@ -16,19 +16,23 @@ import { LAB_DESCRIPTIONS } from '../../constants/descriptions';
 /**
  * Компонент для отображения описания лабораторной работы
  * Включает теоретическую часть, порядок выполнения и формулы
+ * Использует аккордеон для организации контента
  */
 const LabDescription: React.FC = () => {
+    // Состояние для отслеживания открытой секции аккордеона
     const [expanded, setExpanded] = useState<string | false>(false);
+    // Состояние для управления анимацией появления контента
     const [showContent, setShowContent] = useState(false);
 
+    // Эффект для отложенного появления контента
     useEffect(() => {
-        // Задержка для эффекта появления контента
         const timer = setTimeout(() => {
             setShowContent(true);
         }, 300);
         return () => clearTimeout(timer);
     }, []);
 
+    // Обработчик изменения состояния аккордеона
     const handleChange = (panel: string) => (
         event: React.SyntheticEvent,
         isExpanded: boolean
@@ -37,8 +41,10 @@ const LabDescription: React.FC = () => {
     };
 
     return (
+        // Анимация появления всего компонента
         <Fade in={showContent} timeout={1000}>
             <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+                {/* Анимация появления заголовка */}
                 <Grow in={showContent} timeout={800}>
                     <div>
                         <Typography variant="h4" gutterBottom>
@@ -60,7 +66,9 @@ const LabDescription: React.FC = () => {
                     </div>
                 </Grow>
 
+                {/* Секции с описанием */}
                 <Box sx={{ mt: 4 }}>
+                    {/* Секция теоретической части */}
                     <Accordion
                         expanded={expanded === 'theory'}
                         onChange={handleChange('theory')}
@@ -79,6 +87,7 @@ const LabDescription: React.FC = () => {
                         </AccordionSummary>
                         <AccordionDetails>
                             <Collapse in={expanded === 'theory'} timeout={500}>
+                                {/* Отображение теоретического материала с анимацией */}
                                 {LAB_DESCRIPTIONS.theory.map((item, index) => (
                                     <Fade 
                                         in={expanded === 'theory'} 
@@ -111,6 +120,7 @@ const LabDescription: React.FC = () => {
                         </AccordionDetails>
                     </Accordion>
 
+                    {/* Секция порядка выполнения */}
                     <Accordion
                         expanded={expanded === 'procedure'}
                         onChange={handleChange('procedure')}
@@ -129,6 +139,7 @@ const LabDescription: React.FC = () => {
                         </AccordionSummary>
                         <AccordionDetails>
                             <Collapse in={expanded === 'procedure'} timeout={500}>
+                                {/* Отображение шагов выполнения с анимацией */}
                                 {LAB_DESCRIPTIONS.procedure.map((item, index) => (
                                     <Fade 
                                         in={expanded === 'procedure'} 
@@ -163,6 +174,7 @@ const LabDescription: React.FC = () => {
                         </AccordionDetails>
                     </Accordion>
 
+                    {/* Секция формул */}
                     <Accordion
                         expanded={expanded === 'formulas'}
                         onChange={handleChange('formulas')}
@@ -181,6 +193,7 @@ const LabDescription: React.FC = () => {
                         </AccordionSummary>
                         <AccordionDetails>
                             <Collapse in={expanded === 'formulas'} timeout={500}>
+                                {/* Отображение формул с анимацией */}
                                 {LAB_DESCRIPTIONS.formulas.map((item, index) => (
                                     <Fade 
                                         in={expanded === 'formulas'} 
@@ -196,6 +209,7 @@ const LabDescription: React.FC = () => {
                                             >
                                                 {item.title}
                                             </Typography>
+                                            {/* Отображение формулы в моноширинном шрифте */}
                                             <Typography 
                                                 variant="h6" 
                                                 sx={{ 
@@ -209,6 +223,7 @@ const LabDescription: React.FC = () => {
                                             >
                                                 {item.content}
                                             </Typography>
+                                            {/* Описание формулы */}
                                             <Typography 
                                                 variant="body2" 
                                                 color="text.secondary"

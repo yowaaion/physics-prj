@@ -1,13 +1,15 @@
 /**
  * Интерфейс для хранения данных измерений
+ * Описывает структуру данных для одного измерения в эксперименте
+ * Включает как измеренные значения, так и вычисленные производные величины
  */
 export interface Measurement {
-    id: number;
-    temperature_c: number | null;      // Температура в Цельсиях
-    temperature_k: number | null;      // Температура в Кельвинах
-    inverse_temperature: number | null; // Обратная температура (1/T)
-    resistance: number | null;         // Сопротивление в Омах
-    conductance: number | null;        // Проводимость в Ом⁻¹
-    ln_conductance: number | null;     // Натуральный логарифм проводимости
-    ionization_energy: number | null;  // Энергия ионизации в Джоулях
+    id: number;                        // Уникальный идентификатор измерения
+    temperature_c: number | null;      // Температура в Цельсиях (измеренное значение)
+    temperature_k: number | null;      // Температура в Кельвинах (вычисляется как T = t + 273.15)
+    inverse_temperature: number | null; // Обратная температура (1/T) в Кельвинах⁻¹
+    resistance: number | null;         // Сопротивление в Омах (измеренное значение)
+    conductance: number | null;        // Проводимость в Ом⁻¹ (вычисляется как G = 1/R)
+    ln_conductance: number | null;     // Натуральный логарифм проводимости (вычисляется как ln(G))
+    ionization_energy: number | null;  // Энергия ионизации в Джоулях (вычисляется по формуле ΔEᵢ = -2k * slope)
 } 

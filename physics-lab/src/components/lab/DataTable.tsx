@@ -21,6 +21,8 @@ import { useMeasurements } from '../../context/MeasurementsContext';
 
 /**
  * Компонент таблицы для ввода данных измерений
+ * Отображает таблицу с полями для ввода температуры и сопротивления,
+ * а также автоматически вычисляемыми производными величинами
  */
 export const DataTable: React.FC = () => {
     const { measurements, errors, handleChange, handleAddRow, handleDeleteRow } = useMeasurements();

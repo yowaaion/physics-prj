@@ -4,6 +4,11 @@ const BOLTZMANN_CONSTANT = 1.380649e-23; // Джоуль/Кельвин
 
 /**
  * Рассчитывает производные значения на основе введенных данных
+ * Вычисляет:
+ * - Температуру в Кельвинах
+ * - Обратную температуру
+ * - Проводимость
+ * - Натуральный логарифм проводимости
  */
 export function calculateDerivedValues(measurement: Measurement): Measurement {
     const { temperature_c, resistance } = measurement;
@@ -34,9 +39,17 @@ export function calculateDerivedValues(measurement: Measurement): Measurement {
 
 /**
  * Рассчитывает энергию ионизации примесей
- * Использует формулы:
+ * Использует метод линейной регрессии для нахождения зависимости ln(G) от 1/T
+ * 
+ * Формулы:
  * (12.21): A = (lnG₁ - lnG₂)/(1/T₁ - 1/T₂)
  * (12.22): ΔEᵢ = 2kA
+ * 
+ * где:
+ * - G - проводимость
+ * - T - температура
+ * - k - постоянная Больцмана
+ * - ΔEᵢ - энергия ионизации
  */
 export function calculateIonizationEnergy(measurements: Measurement[]): Measurement[] {
     const validMeasurements = measurements.filter(m => 
@@ -48,7 +61,6 @@ export function calculateIonizationEnergy(measurements: Measurement[]): Measurem
         return measurements.map(m => ({ ...m, ionization_energy: null }));
     }
 
-    // Линейная регрессия для ln(G) = A + B*(1/T)
     let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
     const n = validMeasurements.length;
 
@@ -61,10 +73,8 @@ export function calculateIonizationEnergy(measurements: Measurement[]): Measurem
         sumX2 += x * x;
     }
 
-    // Вычисляем коэффициент наклона B
     const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
     
-    // Энергия ионизации E = -2k * slope, где k - постоянная Больцмана
     const ionization_energy = -2 * BOLTZMANN_CONSTANT * slope;
 
     return measurements.map(m => ({ ...m, ionization_energy }));

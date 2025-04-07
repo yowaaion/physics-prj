@@ -15,12 +15,16 @@ import { useMeasurements } from '../../context/MeasurementsContext';
 
 /**
  * Компонент для отображения графика зависимости lnG от 1/T
+ * Строит график на основе измерений и рассчитывает линию тренда
  */
 export const ResistanceChart: React.FC = () => {
+    // Получаем данные измерений из контекста
     const { measurements } = useMeasurements();
+    // Состояния для управления отображением элементов графика
     const [showGrid, setShowGrid] = useState(true);
     const [showPoints, setShowPoints] = useState(true);
 
+    // Фильтруем и подготавливаем данные для графика
     const validData = measurements
         .filter(m => m.inverse_temperature !== null && m.ln_conductance !== null)
         .map(m => ({
@@ -34,6 +38,7 @@ export const ResistanceChart: React.FC = () => {
         }))
         .sort((a, b) => a.inverseTemp - b.inverseTemp);
 
+    // Если нет данных, показываем сообщение
     if (validData.length === 0) {
         return (
             <Fade in={true}>
@@ -49,7 +54,7 @@ export const ResistanceChart: React.FC = () => {
         );
     }
 
-    // Рассчитываем линию тренда
+    // Рассчитываем линию тренда методом наименьших квадратов
     const n = validData.length;
     let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
     validData.forEach(point => {
@@ -59,9 +64,11 @@ export const ResistanceChart: React.FC = () => {
         sumX2 += point.inverseTemp * point.inverseTemp;
     });
 
+    // Вычисляем коэффициенты линии тренда
     const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
     const intercept = (sumY - slope * sumX) / n;
 
+    // Создаем данные для линии тренда
     const trendLineData = [
         { inverseTemp: validData[0].inverseTemp, trendLnG: slope * validData[0].inverseTemp + intercept },
         { inverseTemp: validData[validData.length - 1].inverseTemp, trendLnG: slope * validData[validData.length - 1].inverseTemp + intercept }
@@ -70,10 +77,12 @@ export const ResistanceChart: React.FC = () => {
     return (
         <Fade in={true}>
             <Paper sx={{ p: 3 }}>
+                {/* Заголовок графика */}
                 <Typography variant="h6" align="center" gutterBottom>
                     График зависимости ln(G) от 1/T
                 </Typography>
 
+                {/* Переключатели отображения элементов графика */}
                 <Box sx={{ mb: 2, display: 'flex', gap: 2, justifyContent: 'center' }}>
                     <FormControlLabel
                         control={
@@ -97,13 +106,16 @@ export const ResistanceChart: React.FC = () => {
                     />
                 </Box>
 
+                {/* Контейнер графика */}
                 <Box sx={{ width: '100%', height: 400 }}>
                     <ResponsiveContainer>
                         <LineChart
                             data={validData}
                             margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
                         >
+                            {/* Сетка графика */}
                             {showGrid && <CartesianGrid strokeDasharray="3 3" />}
+                            {/* Ось X */}
                             <XAxis
                                 dataKey="inverseTemp"
                                 tickFormatter={value => value.toExponential(2)}
@@ -113,6 +125,7 @@ export const ResistanceChart: React.FC = () => {
                                     offset: 0
                                 }}
                             />
+                            {/* Ось Y */}
                             <YAxis
                                 label={{
                                     value: 'ln(G)',
@@ -120,9 +133,11 @@ export const ResistanceChart: React.FC = () => {
                                     position: 'insideLeft'
                                 }}
                             />
+                            {/* Всплывающая подсказка */}
                             <Tooltip content={<CustomTooltip />} />
                             <Legend />
                             
+                            {/* Линия данных */}
                             <Line
                                 type="monotone"
                                 dataKey="lnConductance"
@@ -133,6 +148,7 @@ export const ResistanceChart: React.FC = () => {
                                 activeDot={{ r: 6, strokeWidth: 2 }}
                             />
 
+                            {/* Линия тренда */}
                             <Line
                                 data={trendLineData}
                                 type="linear"
@@ -147,6 +163,7 @@ export const ResistanceChart: React.FC = () => {
                     </ResponsiveContainer>
                 </Box>
 
+                {/* Отображение углового коэффициента */}
                 <Box sx={{ mt: 2, textAlign: 'center' }}>
                     <Typography variant="body2" color="text.secondary">
                         Угловой коэффициент: {slope.toExponential(4)}
@@ -157,6 +174,10 @@ export const ResistanceChart: React.FC = () => {
     );
 };
 
+/**
+ * Компонент всплывающей подсказки для графика
+ * Отображает детальную информацию о точке при наведении
+ */
 const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
         const data = payload[0].payload;
