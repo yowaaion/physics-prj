@@ -1,25 +1,31 @@
 import { Measurement } from '../types/measurement';
-import { TEMPERATURE_LIMITS, RESISTANCE_LIMITS } from '../constants/physics';
 
-/**
- * Проверяет корректность введенного значения
- */
-export const validateValue = (field: keyof Measurement, value: number): string | null => {
-    if (field === 'temperature_c') {
-        if (value < TEMPERATURE_LIMITS.MIN) {
-            return `Температура не может быть ниже ${TEMPERATURE_LIMITS.MIN}°C`;
-        }
-        if (value > TEMPERATURE_LIMITS.MAX) {
-            return `Температура не может быть выше ${TEMPERATURE_LIMITS.MAX}°C`;
-        }
+export function validateValue(field: keyof Measurement, value: number): string | null {
+    switch (field) {
+        case 'temperature_c':
+            if (value < -273.15) {
+                return 'Температура не может быть ниже абсолютного нуля (-273.15°C)';
+            }
+            if (value > 1000) {
+                return 'Температура не может быть выше 1000°C';
+            }
+            break;
+            
+        case 'resistance':
+            if (value <= 0) {
+                return 'Сопротивление должно быть положительным числом';
+            }
+            if (value > 1e6) {
+                return 'Сопротивление не может быть больше 1 МОм';
+            }
+            break;
+            
+        case 'id':
+            if (!Number.isInteger(value) || value < 1) {
+                return 'ID должен быть положительным целым числом';
+            }
+            break;
     }
-    if (field === 'resistance') {
-        if (value < RESISTANCE_LIMITS.MIN) {
-            return `Сопротивление не может быть меньше ${RESISTANCE_LIMITS.MIN} Ом`;
-        }
-        if (value > RESISTANCE_LIMITS.MAX) {
-            return `Сопротивление не может быть больше ${RESISTANCE_LIMITS.MAX} Ом`;
-        }
-    }
+    
     return null;
-}; 
+} 

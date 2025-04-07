@@ -1,39 +1,68 @@
 import React, { useState } from 'react';
-import { Container, Typography, Box, Paper } from '@mui/material';
-import { DataTable } from './components/DataTable';
-import { ResistanceChart } from './components/ResistanceChart';
-import { Measurement } from './types';
+import { Container, Typography, Box, Tabs, Tab } from '@mui/material';
+import { DataTable } from './components/lab/DataTable';
+import { ResistanceChart } from './components/lab/ResistanceChart';
+import LabDescription from './components/lab/LabDescription';
+
+interface TabPanelProps {
+    children?: React.ReactNode;
+    index: number;
+    value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+    const { children, value, index, ...other } = props;
+
+    return (
+        <div
+            role="tabpanel"
+            hidden={value !== index}
+            id={`lab-tabpanel-${index}`}
+            aria-labelledby={`lab-tab-${index}`}
+            {...other}
+        >
+            {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
+        </div>
+    );
+}
 
 function App() {
-  const [measurements, setMeasurements] = useState<Measurement[]>([]);
+    const [tabValue, setTabValue] = useState(0);
 
-  const handleDataChange = (newData: Measurement[]) => {
-    setMeasurements(newData);
-  };
+    const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+        setTabValue(newValue);
+    };
 
-  return (
-    <Container maxWidth="lg">
-      <Box sx={{ my: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center">
-          Зависимость сопротивления от температуры
-        </Typography>
-        
-        <Paper sx={{ p: 2, mb: 4 }}>
-          <Typography variant="h6" gutterBottom>
-            Ввод данных
-          </Typography>
-          <DataTable onDataChange={handleDataChange} />
-        </Paper>
+    return (
+        <Container maxWidth="lg">
+            <Box sx={{ my: 4 }}>
+                <Typography variant="h4" component="h1" gutterBottom align="center">
+                    Физическая лаборатория
+                </Typography>
+                
+                <LabDescription />
 
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            График зависимости
-          </Typography>
-          <ResistanceChart data={measurements} />
-        </Paper>
-      </Box>
-    </Container>
-  );
+                <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 4 }}>
+                    <Tabs
+                        value={tabValue}
+                        onChange={handleTabChange}
+                        aria-label="lab tabs"
+                        centered
+                    >
+                        <Tab label="Ввод данных" id="lab-tab-0" />
+                        <Tab label="График" id="lab-tab-1" />
+                    </Tabs>
+                </Box>
+
+                <TabPanel value={tabValue} index={0}>
+                    <DataTable />
+                </TabPanel>
+                <TabPanel value={tabValue} index={1}>
+                    <ResistanceChart />
+                </TabPanel>
+            </Box>
+        </Container>
+    );
 }
 
 export default App;
