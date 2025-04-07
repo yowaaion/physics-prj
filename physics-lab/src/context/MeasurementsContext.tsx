@@ -15,31 +15,41 @@ interface MeasurementsContextType {
     handleChange: (id: number, field: keyof Measurement, value: string) => void;  // Изменение значения в строке
 }
 
+// Создание пустого измерения с заданным ID
+const createEmptyMeasurement = (id: number): Measurement => ({
+    id,
+    temperature_c: null,
+    temperature_k: null,
+    inverse_temperature: null,
+    resistance: null,
+    conductance: null,
+    ln_conductance: null,
+    ionization_energy: null
+});
+
+// Инициализация начальных измерений
+const initializeMeasurements = (): Measurement[] => {
+    const savedMeasurements = loadMeasurements();
+    
+    if (savedMeasurements.length === 0) {
+        return [createEmptyMeasurement(1)];
+    }
+
+    // Восстанавливаем все производные значения
+    const recalculatedMeasurements = savedMeasurements
+        .map(measurement => calculateDerivedValues(measurement));
+    
+    // Пересчитываем энергию ионизации для всего набора данных
+    return calculateIonizationEnergy(recalculatedMeasurements);
+};
+
 // Создаем контекст с начальным значением undefined
 const MeasurementsContext = createContext<MeasurementsContextType | undefined>(undefined);
 
 // Провайдер контекста измерений
 export const MeasurementsProvider: React.FC<{children: ReactNode}> = ({ children }) => {
-    // Инициализация состояния измерений с загрузкой данных из localStorage
-    const [measurements, setMeasurements] = useState<Measurement[]>(() => {
-        const savedMeasurements = loadMeasurements();
-        if (savedMeasurements.length > 0) {
-            // Пересчитываем производные значения для каждого измерения
-            const recalculatedMeasurements = savedMeasurements.map(m => calculateDerivedValues(m));
-            // Пересчитываем энергию ионизации
-            return calculateIonizationEnergy(recalculatedMeasurements);
-        }
-        return [{
-            id: 1,
-            temperature_c: null,  // Температура в Цельсиях
-            temperature_k: null,  // Температура в Кельвинах
-            inverse_temperature: null,  // Обратная температура
-            resistance: null,  // Сопротивление
-            conductance: null,  // Проводимость
-            ln_conductance: null,  // Логарифм проводимости
-            ionization_energy: null  // Энергия ионизации
-        }];
-    });
+    // Инициализация состояния измерений
+    const [measurements, setMeasurements] = useState<Measurement[]>(initializeMeasurements);
 
     // Состояние для хранения ошибок валидации
     const [errors, setErrors] = useState<{[key: string]: string}>({});
@@ -84,19 +94,11 @@ export const MeasurementsProvider: React.FC<{children: ReactNode}> = ({ children
             return;
         }
 
-        const newMeasurement: Measurement = {
-            id: measurements.length + 1,
-            temperature_c: null,
-            temperature_k: null,
-            inverse_temperature: null,
-            resistance: null,
-            conductance: null,
-            ln_conductance: null,
-            ionization_energy: null
-        };
-        
         setMeasurements(prevMeasurements => {
-            const newMeasurements = [...prevMeasurements, newMeasurement];
+            const newMeasurements = [
+                ...prevMeasurements,
+                createEmptyMeasurement(prevMeasurements.length + 1)
+            ];
             return calculateIonizationEnergy(newMeasurements);
         });
     };

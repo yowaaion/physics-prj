@@ -125,17 +125,54 @@ export const ResistanceChart: React.FC = () => {
 
     return (
         <Fade in={true}>
-            <Paper sx={{ p: 3 }}>
-                <Box sx={{ mb: 2 }}>
+            <Paper 
+                sx={{ 
+                    p: 3,
+                    borderRadius: 2,
+                    boxShadow: (theme) => theme.shadows[3],
+                    '&:hover': {
+                        boxShadow: (theme) => theme.shadows[6]
+                    },
+                    transition: 'box-shadow 0.3s ease-in-out'
+                }}
+            >
+                <Typography 
+                    variant="h6" 
+                    sx={{ 
+                        mb: 2, 
+                        color: 'text.primary',
+                        fontWeight: 500,
+                        textAlign: 'center'
+                    }}
+                >
+                    График зависимости ln(G) от 1/T
+                </Typography>
+                
+                <Box 
+                    sx={{ 
+                        mb: 2,
+                        display: 'flex',
+                        gap: 2,
+                        justifyContent: 'center',
+                        borderBottom: '1px solid',
+                        borderColor: 'divider',
+                        pb: 2
+                    }}
+                >
                     <FormControlLabel
                         control={
                             <Switch
                                 checked={showGrid}
                                 onChange={(e) => setShowGrid(e.target.checked)}
                                 color="primary"
+                                size="small"
                             />
                         }
-                        label="Показать сетку"
+                        label={
+                            <Typography variant="body2" color="text.secondary">
+                                Сетка
+                            </Typography>
+                        }
                     />
                     <FormControlLabel
                         control={
@@ -143,46 +180,134 @@ export const ResistanceChart: React.FC = () => {
                                 checked={showPoints}
                                 onChange={(e) => setShowPoints(e.target.checked)}
                                 color="primary"
+                                size="small"
                             />
                         }
-                        label="Показать точки"
+                        label={
+                            <Typography variant="body2" color="text.secondary">
+                                Точки измерений
+                            </Typography>
+                        }
                     />
                 </Box>
-                <Box sx={{ width: '100%', height: 400 }}>
+                <Box sx={{ 
+                    width: '100%', 
+                    height: 400,
+                    '.recharts-default-tooltip': {
+                        borderRadius: 1,
+                        boxShadow: (theme) => theme.shadows[2],
+                        border: 'none'
+                    },
+                    '.recharts-legend-item': {
+                        marginRight: '20px !important'
+                    }
+                }}>
                     <ResponsiveContainer>
                         <LineChart
                             data={allData}
                             margin={{
-                                top: 5,
+                                top: 20,
                                 right: 30,
                                 left: 20,
-                                bottom: 5,
+                                bottom: 20
                             }}
                         >
-                            {showGrid && <CartesianGrid strokeDasharray="3 3" />}
+                            {showGrid && (
+                                <CartesianGrid 
+                                    strokeDasharray="3 3"
+                                    stroke="#ccc"
+                                />
+                            )}
                             <XAxis
                                 dataKey="inverseTemp"
                                 type="number"
                                 domain={['auto', 'auto']}
-                                label={{ value: '1/T (K⁻¹)', position: 'bottom' }}
+                                label={{ 
+                                    value: '1/T (K⁻¹)', 
+                                    position: 'bottom',
+                                    offset: 0,
+                                    style: {
+                                        textAnchor: 'middle',
+                                        fill: 'rgba(0, 0, 0, 0.87)',
+                                        fontSize: 14,
+                                        fontWeight: 500
+                                    }
+                                }}
                                 tickFormatter={(value) => value.toExponential(2)}
+                                tick={{ fill: 'rgba(0, 0, 0, 0.6)', fontSize: 12 }}
                             />
                             <YAxis
                                 type="number"
                                 domain={['auto', 'auto']}
-                                label={{ value: 'ln(G)', angle: -90, position: 'insideLeft' }}
+                                label={{ 
+                                    value: 'ln(G)', 
+                                    angle: -90, 
+                                    position: 'insideLeft',
+                                    offset: 0,
+                                    style: {
+                                        textAnchor: 'middle',
+                                        fill: 'rgba(0, 0, 0, 0.87)',
+                                        fontSize: 14,
+                                        fontWeight: 500
+                                    }
+                                }}
                                 tickFormatter={(value) => value.toFixed(2)}
+                                tick={{ fill: 'rgba(0, 0, 0, 0.6)', fontSize: 12 }}
                             />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Legend />
+                            <Tooltip 
+                                content={<CustomTooltip />}
+                                wrapperStyle={{
+                                    outline: 'none',
+                                    zIndex: 1000
+                                }}
+                            />
+                            <Legend 
+                                verticalAlign="top"
+                                height={36}
+                                wrapperStyle={{
+                                    paddingTop: '10px',
+                                    paddingBottom: '10px',
+                                    fontSize: '14px',
+                                    fontWeight: 500,
+                                    display: 'flex',
+                                    justifyContent: 'center'
+                                }}
+                                formatter={(value) => {
+                                    return <span style={{ 
+                                        color: value === 'Измерения' ? '#1976d2' : '#dc004e',
+                                        padding: '4px 12px',
+                                        borderRadius: '16px',
+                                        backgroundColor: value === 'Измерения' ? 'rgba(25, 118, 210, 0.08)' : 'rgba(220, 0, 78, 0.08)',
+                                        transition: 'all 0.2s ease-in-out',
+                                        cursor: 'pointer'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = 
+                                            value === 'Измерения' ? 'rgba(25, 118, 210, 0.12)' : 'rgba(220, 0, 78, 0.12)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = 
+                                            value === 'Измерения' ? 'rgba(25, 118, 210, 0.08)' : 'rgba(220, 0, 78, 0.08)';
+                                    }}
+                                    >
+                                        {value}
+                                    </span>;
+                                }}
+                            />
                             {showPoints && (
                                 <Line
                                     type="monotone"
                                     dataKey="lnConductance"
                                     name="Измерения"
                                     stroke="#1976d2"
-                                    dot={{ r: 4 }}
-                                    activeDot={{ r: 6 }}
+                                    strokeWidth={2}
+                                    dot={{ r: 4, fill: '#1976d2', strokeWidth: 1 }}
+                                    activeDot={{ 
+                                        r: 6, 
+                                        fill: '#1976d2', 
+                                        strokeWidth: 2,
+                                        stroke: '#fff'
+                                    }}
                                     isAnimationActive={false}
                                 />
                             )}
