@@ -23,7 +23,13 @@ export const MeasurementsProvider: React.FC<{children: ReactNode}> = ({ children
     // Инициализация состояния измерений с загрузкой данных из localStorage
     const [measurements, setMeasurements] = useState<Measurement[]>(() => {
         const savedMeasurements = loadMeasurements();
-        return savedMeasurements.length > 0 ? savedMeasurements : [{
+        if (savedMeasurements.length > 0) {
+            // Пересчитываем производные значения для каждого измерения
+            const recalculatedMeasurements = savedMeasurements.map(m => calculateDerivedValues(m));
+            // Пересчитываем энергию ионизации
+            return calculateIonizationEnergy(recalculatedMeasurements);
+        }
+        return [{
             id: 1,
             temperature_c: null,  // Температура в Цельсиях
             temperature_k: null,  // Температура в Кельвинах

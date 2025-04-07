@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
     LineChart,
     Line,
@@ -46,8 +46,11 @@ export const ResistanceChart: React.FC = () => {
                 }))
                 .sort((a, b) => a.inverseTemp - b.inverseTemp);
 
+            console.log('Valid measurements:', validMeasurements); // Отладочный вывод
+
             // Если недостаточно точек для построения графика
             if (validMeasurements.length < 2) {
+                console.log('Not enough measurements'); // Отладочный вывод
                 return {
                     validData: [],
                     trendLineData: [],
@@ -73,13 +76,17 @@ export const ResistanceChart: React.FC = () => {
             const trendData = [
                 { 
                     inverseTemp: validMeasurements[0].inverseTemp, 
-                    trendLnG: slope * validMeasurements[0].inverseTemp + intercept 
+                    trendLnG: slope * validMeasurements[0].inverseTemp + intercept,
+                    lnConductance: null // Добавляем это поле для совместимости
                 },
                 { 
                     inverseTemp: validMeasurements[validMeasurements.length - 1].inverseTemp, 
-                    trendLnG: slope * validMeasurements[validMeasurements.length - 1].inverseTemp + intercept 
+                    trendLnG: slope * validMeasurements[validMeasurements.length - 1].inverseTemp + intercept,
+                    lnConductance: null // Добавляем это поле для совместимости
                 }
             ];
+
+            console.log('Trend data:', trendData); // Отладочный вывод
 
             return {
                 validData: validMeasurements,
@@ -87,7 +94,7 @@ export const ResistanceChart: React.FC = () => {
                 error: null
             };
         } catch (err) {
-            console.error('Ошибка при построении графика:', err);
+            console.error('Error in data processing:', err); // Отладочный вывод
             return {
                 validData: [],
                 trendLineData: [],
@@ -111,6 +118,10 @@ export const ResistanceChart: React.FC = () => {
             </Fade>
         );
     }
+
+    // Объединяем все данные для графика
+    const allData = [...validData, ...trendLineData];
+    console.log('All chart data:', allData); // Отладочный вывод
 
     return (
         <Fade in={true}>
@@ -140,7 +151,7 @@ export const ResistanceChart: React.FC = () => {
                 <Box sx={{ width: '100%', height: 400 }}>
                     <ResponsiveContainer>
                         <LineChart
-                            data={validData}
+                            data={allData}
                             margin={{
                                 top: 5,
                                 right: 30,
@@ -151,11 +162,14 @@ export const ResistanceChart: React.FC = () => {
                             {showGrid && <CartesianGrid strokeDasharray="3 3" />}
                             <XAxis
                                 dataKey="inverseTemp"
+                                type="number"
+                                domain={['auto', 'auto']}
                                 label={{ value: '1/T (K⁻¹)', position: 'bottom' }}
                                 tickFormatter={(value) => value.toExponential(2)}
                             />
                             <YAxis
-                                dataKey="lnConductance"
+                                type="number"
+                                domain={['auto', 'auto']}
                                 label={{ value: 'ln(G)', angle: -90, position: 'insideLeft' }}
                                 tickFormatter={(value) => value.toFixed(2)}
                             />
@@ -169,16 +183,17 @@ export const ResistanceChart: React.FC = () => {
                                     stroke="#1976d2"
                                     dot={{ r: 4 }}
                                     activeDot={{ r: 6 }}
+                                    isAnimationActive={false}
                                 />
                             )}
                             <Line
                                 type="monotone"
-                                data={trendLineData}
                                 dataKey="trendLnG"
                                 name="Линия тренда"
                                 stroke="#dc004e"
                                 strokeWidth={2}
                                 dot={false}
+                                isAnimationActive={false}
                             />
                         </LineChart>
                     </ResponsiveContainer>
