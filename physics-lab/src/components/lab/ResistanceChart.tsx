@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     LineChart,
     Line,
@@ -10,7 +10,7 @@ import {
     Legend,
     ReferenceLine
 } from 'recharts';
-import { Paper, Typography, Box, Fade, Switch, FormControlLabel } from '@mui/material';
+import { Paper, Typography, Box, Fade, Switch, FormControlLabel, Alert } from '@mui/material';
 import { useMeasurements } from '../../context/MeasurementsContext';
 
 /**
@@ -25,28 +25,86 @@ export const ResistanceChart: React.FC = () => {
     const [showPoints, setShowPoints] = useState(true);
 
     // Фильтруем и подготавливаем данные для графика
-    const validData = measurements
-        .filter(m => m.inverse_temperature !== null && m.ln_conductance !== null)
-        .map(m => ({
-            id: m.id,
-            inverseTemp: m.inverse_temperature!,
-            lnConductance: m.ln_conductance!,
-            tooltip: {
-                temp: m.temperature_c?.toFixed(1),
-                resistance: m.resistance?.toFixed(2)
-            }
-        }))
-        .sort((a, b) => a.inverseTemp - b.inverseTemp);
+    const { validData, trendLineData, error } = useMemo(() => {
+        try {
+            // Фильтруем валидные измерения
+            const validMeasurements = measurements
+                .filter(m => 
+                    m.inverse_temperature !== null && 
+                    m.ln_conductance !== null &&
+                    !isNaN(m.inverse_temperature) &&
+                    !isNaN(m.ln_conductance)
+                )
+                .map(m => ({
+                    id: m.id,
+                    inverseTemp: m.inverse_temperature!,
+                    lnConductance: m.ln_conductance!,
+                    tooltip: {
+                        temp: m.temperature_c?.toFixed(1),
+                        resistance: m.resistance?.toFixed(2)
+                    }
+                }))
+                .sort((a, b) => a.inverseTemp - b.inverseTemp);
 
-    // Если нет данных, показываем сообщение
-    if (validData.length === 0) {
+            // Если недостаточно точек для построения графика
+            if (validMeasurements.length < 2) {
+                return {
+                    validData: [],
+                    trendLineData: [],
+                    error: 'Необходимо минимум 2 измерения для построения графика'
+                };
+            }
+
+            // Рассчитываем линию тренда методом наименьших квадратов
+            const n = validMeasurements.length;
+            let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+            validMeasurements.forEach(point => {
+                sumX += point.inverseTemp;
+                sumY += point.lnConductance;
+                sumXY += point.inverseTemp * point.lnConductance;
+                sumX2 += point.inverseTemp * point.inverseTemp;
+            });
+
+            // Вычисляем коэффициенты линии тренда
+            const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+
+            // Создаем данные для линии тренда
+            const trendData = [
+                { 
+                    inverseTemp: validMeasurements[0].inverseTemp, 
+                    trendLnG: slope * validMeasurements[0].inverseTemp + intercept 
+                },
+                { 
+                    inverseTemp: validMeasurements[validMeasurements.length - 1].inverseTemp, 
+                    trendLnG: slope * validMeasurements[validMeasurements.length - 1].inverseTemp + intercept 
+                }
+            ];
+
+            return {
+                validData: validMeasurements,
+                trendLineData: trendData,
+                error: null
+            };
+        } catch (err) {
+            console.error('Ошибка при построении графика:', err);
+            return {
+                validData: [],
+                trendLineData: [],
+                error: 'Ошибка при построении графика'
+            };
+        }
+    }, [measurements]);
+
+    // Если есть ошибка, показываем сообщение
+    if (error) {
         return (
             <Fade in={true}>
                 <Paper sx={{ p: 3, textAlign: 'center' }}>
-                    <Typography variant="h6" color="text.secondary">
-                        Нет данных для построения графика
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    <Alert severity="error" sx={{ mb: 2 }}>
+                        {error}
+                    </Alert>
+                    <Typography variant="body2" color="text.secondary">
                         Добавьте измерения в таблицу
                     </Typography>
                 </Paper>
@@ -54,36 +112,10 @@ export const ResistanceChart: React.FC = () => {
         );
     }
 
-    // Рассчитываем линию тренда методом наименьших квадратов
-    const n = validData.length;
-    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-    validData.forEach(point => {
-        sumX += point.inverseTemp;
-        sumY += point.lnConductance;
-        sumXY += point.inverseTemp * point.lnConductance;
-        sumX2 += point.inverseTemp * point.inverseTemp;
-    });
-
-    // Вычисляем коэффициенты линии тренда
-    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-    const intercept = (sumY - slope * sumX) / n;
-
-    // Создаем данные для линии тренда
-    const trendLineData = [
-        { inverseTemp: validData[0].inverseTemp, trendLnG: slope * validData[0].inverseTemp + intercept },
-        { inverseTemp: validData[validData.length - 1].inverseTemp, trendLnG: slope * validData[validData.length - 1].inverseTemp + intercept }
-    ];
-
     return (
         <Fade in={true}>
             <Paper sx={{ p: 3 }}>
-                {/* Заголовок графика */}
-                <Typography variant="h6" align="center" gutterBottom>
-                    График зависимости ln(G) от 1/T
-                </Typography>
-
-                {/* Переключатели отображения элементов графика */}
-                <Box sx={{ mb: 2, display: 'flex', gap: 2, justifyContent: 'center' }}>
+                <Box sx={{ mb: 2 }}>
                     <FormControlLabel
                         control={
                             <Switch
@@ -92,7 +124,7 @@ export const ResistanceChart: React.FC = () => {
                                 color="primary"
                             />
                         }
-                        label="Сетка"
+                        label="Показать сетку"
                     />
                     <FormControlLabel
                         control={
@@ -102,106 +134,133 @@ export const ResistanceChart: React.FC = () => {
                                 color="primary"
                             />
                         }
-                        label="Точки"
+                        label="Показать точки"
                     />
                 </Box>
-
-                {/* Контейнер графика */}
                 <Box sx={{ width: '100%', height: 400 }}>
                     <ResponsiveContainer>
                         <LineChart
                             data={validData}
-                            margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                            margin={{
+                                top: 5,
+                                right: 30,
+                                left: 20,
+                                bottom: 5,
+                            }}
                         >
-                            {/* Сетка графика */}
                             {showGrid && <CartesianGrid strokeDasharray="3 3" />}
-                            {/* Ось X */}
                             <XAxis
                                 dataKey="inverseTemp"
-                                tickFormatter={value => value.toExponential(2)}
-                                label={{
-                                    value: '1/T, K⁻¹',
-                                    position: 'bottom',
-                                    offset: 0
-                                }}
+                                label={{ value: '1/T (K⁻¹)', position: 'bottom' }}
+                                tickFormatter={(value) => value.toExponential(2)}
                             />
-                            {/* Ось Y */}
                             <YAxis
-                                label={{
-                                    value: 'ln(G)',
-                                    angle: -90,
-                                    position: 'insideLeft'
-                                }}
+                                dataKey="lnConductance"
+                                label={{ value: 'ln(G)', angle: -90, position: 'insideLeft' }}
+                                tickFormatter={(value) => value.toFixed(2)}
                             />
-                            {/* Всплывающая подсказка */}
                             <Tooltip content={<CustomTooltip />} />
                             <Legend />
-                            
-                            {/* Линия данных */}
+                            {showPoints && (
+                                <Line
+                                    type="monotone"
+                                    dataKey="lnConductance"
+                                    name="Измерения"
+                                    stroke="#1976d2"
+                                    dot={{ r: 4 }}
+                                    activeDot={{ r: 6 }}
+                                />
+                            )}
                             <Line
                                 type="monotone"
-                                dataKey="lnConductance"
-                                name="ln(G)"
-                                stroke="#8884d8"
-                                strokeWidth={2}
-                                dot={showPoints ? { r: 4, strokeWidth: 2 } : false}
-                                activeDot={{ r: 6, strokeWidth: 2 }}
-                            />
-
-                            {/* Линия тренда */}
-                            <Line
                                 data={trendLineData}
-                                type="linear"
                                 dataKey="trendLnG"
                                 name="Линия тренда"
-                                stroke="#82ca9d"
+                                stroke="#dc004e"
                                 strokeWidth={2}
                                 dot={false}
-                                strokeDasharray="5 5"
                             />
                         </LineChart>
                     </ResponsiveContainer>
-                </Box>
-
-                {/* Отображение углового коэффициента */}
-                <Box sx={{ mt: 2, textAlign: 'center' }}>
-                    <Typography variant="body2" color="text.secondary">
-                        Угловой коэффициент: {slope.toExponential(4)}
-                    </Typography>
                 </Box>
             </Paper>
         </Fade>
     );
 };
 
+interface TooltipProps {
+    active?: boolean;
+    payload?: Array<{
+        dataKey: string;
+        payload: {
+            id: number;
+            inverseTemp: number;
+            lnConductance: number;
+            trendLnG?: number;
+            tooltip?: {
+                temp: string;
+                resistance: string;
+            };
+        };
+    }>;
+}
+
 /**
  * Компонент всплывающей подсказки для графика
  * Отображает детальную информацию о точке при наведении
  */
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip: React.FC<TooltipProps> = ({ active, payload }) => {
     if (active && payload && payload.length) {
-        const data = payload[0].payload;
-        return (
-            <Paper sx={{ p: 1.5, minWidth: '200px' }}>
-                <Typography variant="subtitle2" color="primary" gutterBottom>
-                    Измерение №{data.id}
-                </Typography>
-                <Box sx={{ display: 'grid', gap: 0.5 }}>
-                    <Typography variant="body2">
-                        Температура: {data.tooltip.temp}°C
+        // Находим данные измерения (если есть)
+        const measurementPoint = payload.find(p => p.dataKey === 'lnConductance');
+        // Находим данные линии тренда (если есть)
+        const trendPoint = payload.find(p => p.dataKey === 'trendLnG');
+
+        // Если это точка измерения
+        if (measurementPoint) {
+            const data = measurementPoint.payload;
+            return (
+                <Paper sx={{ p: 1.5, minWidth: '200px' }}>
+                    <Typography variant="subtitle2" color="primary" gutterBottom>
+                        Измерение №{data.id}
                     </Typography>
-                    <Typography variant="body2">
-                        Сопротивление: {data.tooltip.resistance} Ом
+                    <Box sx={{ display: 'grid', gap: 0.5 }}>
+                        <Typography variant="body2">
+                            Температура: {data.tooltip?.temp}°C
+                        </Typography>
+                        <Typography variant="body2">
+                            Сопротивление: {data.tooltip?.resistance} Ом
+                        </Typography>
+                        <Typography variant="body2">
+                            1/T: {data.inverseTemp.toExponential(4)} K⁻¹
+                        </Typography>
+                        <Typography variant="body2">
+                            ln(G): {data.lnConductance.toFixed(4)}
+                        </Typography>
+                    </Box>
+                </Paper>
+            );
+        }
+        
+        // Если это точка линии тренда
+        if (trendPoint) {
+            const data = trendPoint.payload;
+            return (
+                <Paper sx={{ p: 1.5, minWidth: '200px' }}>
+                    <Typography variant="subtitle2" color="#dc004e" gutterBottom>
+                        Линия тренда
                     </Typography>
-                    <Typography variant="body2">
-                        1/T: {data.inverseTemp.toExponential(4)} K⁻¹
-                    </Typography>
-                    <Typography variant="body2">
-                        ln(G): {data.lnConductance.toFixed(4)}
-                    </Typography>
-                </Box>
-            </Paper>
-        );
+                    <Box sx={{ display: 'grid', gap: 0.5 }}>
+                        <Typography variant="body2">
+                            1/T: {data.inverseTemp.toExponential(4)} K⁻¹
+                        </Typography>
+                        <Typography variant="body2">
+                            ln(G): {data.trendLnG?.toFixed(4)}
+                        </Typography>
+                    </Box>
+                </Paper>
+            );
+        }
     }
     return null;
 }; 

@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Measurement } from '../types/measurement';
 import { calculateDerivedValues, calculateIonizationEnergy } from '../utils/calculations';
 import { validateValue } from '../utils/validation';
+import { loadMeasurements, saveMeasurements } from '../utils/storage';
+import { ConfirmDialog } from '../components/common/ConfirmDialog';
 
 // Интерфейс определяет структуру контекста измерений
 interface MeasurementsContextType {
@@ -18,9 +20,10 @@ const MeasurementsContext = createContext<MeasurementsContextType | undefined>(u
 
 // Провайдер контекста измерений
 export const MeasurementsProvider: React.FC<{children: ReactNode}> = ({ children }) => {
-    // Инициализация состояния измерений с одной пустой строкой
-    const [measurements, setMeasurements] = useState<Measurement[]>([
-        {
+    // Инициализация состояния измерений с загрузкой данных из localStorage
+    const [measurements, setMeasurements] = useState<Measurement[]>(() => {
+        const savedMeasurements = loadMeasurements();
+        return savedMeasurements.length > 0 ? savedMeasurements : [{
             id: 1,
             temperature_c: null,  // Температура в Цельсиях
             temperature_k: null,  // Температура в Кельвинах
@@ -29,11 +32,31 @@ export const MeasurementsProvider: React.FC<{children: ReactNode}> = ({ children
             conductance: null,  // Проводимость
             ln_conductance: null,  // Логарифм проводимости
             ionization_energy: null  // Энергия ионизации
-        }
-    ]);
+        }];
+    });
 
     // Состояние для хранения ошибок валидации
     const [errors, setErrors] = useState<{[key: string]: string}>({});
+
+    // Состояния для модальных окон
+    const [dialogState, setDialogState] = useState<{
+        open: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+    }>({
+        open: false,
+        title: '',
+        message: '',
+        onConfirm: () => {}
+    });
+
+    // Сохраняем измерения в localStorage при их изменении
+    useEffect(() => {
+        if (measurements.length > 0) {
+            saveMeasurements(measurements);
+        }
+    }, [measurements]);
 
     // Проверка заполнения последней строки
     const isLastRowFilled = () => {
@@ -46,7 +69,12 @@ export const MeasurementsProvider: React.FC<{children: ReactNode}> = ({ children
     // Добавление новой строки измерений
     const handleAddRow = () => {
         if (!isLastRowFilled()) {
-            alert('Пожалуйста, заполните все поля в текущей строке корректными значениями перед добавлением новой');
+            setDialogState({
+                open: true,
+                title: 'Ошибка',
+                message: 'Пожалуйста, заполните все поля в текущей строке корректными значениями перед добавлением новой',
+                onConfirm: () => {}
+            });
             return;
         }
 
@@ -70,15 +98,27 @@ export const MeasurementsProvider: React.FC<{children: ReactNode}> = ({ children
     // Удаление строки измерений
     const handleDeleteRow = (id: number) => {
         if (measurements.length <= 1) {
-            alert('Нельзя удалить последнюю строку');
+            setDialogState({
+                open: true,
+                title: 'Ошибка',
+                message: 'Нельзя удалить последнюю строку',
+                onConfirm: () => {}
+            });
             return;
         }
 
-        setMeasurements(prevMeasurements => {
-            const newMeasurements = prevMeasurements
-                .filter(m => m.id !== id)
-                .map((m, index) => ({ ...m, id: index + 1 }));
-            return calculateIonizationEnergy(newMeasurements);
+        setDialogState({
+            open: true,
+            title: 'Подтверждение удаления',
+            message: 'Вы уверены, что хотите удалить это измерение?',
+            onConfirm: () => {
+                setMeasurements(prevMeasurements => {
+                    const newMeasurements = prevMeasurements
+                        .filter(m => m.id !== id)
+                        .map((m, index) => ({ ...m, id: index + 1 }));
+                    return calculateIonizationEnergy(newMeasurements);
+                });
+            }
         });
     };
 
@@ -133,6 +173,16 @@ export const MeasurementsProvider: React.FC<{children: ReactNode}> = ({ children
     return (
         <MeasurementsContext.Provider value={value}>
             {children}
+            <ConfirmDialog
+                open={dialogState.open}
+                title={dialogState.title}
+                message={dialogState.message}
+                onConfirm={() => {
+                    dialogState.onConfirm();
+                    setDialogState(prev => ({ ...prev, open: false }));
+                }}
+                onCancel={() => setDialogState(prev => ({ ...prev, open: false }))}
+            />
         </MeasurementsContext.Provider>
     );
 };
