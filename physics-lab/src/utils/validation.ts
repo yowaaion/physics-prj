@@ -15,7 +15,7 @@ export const validateValue = (field: keyof Measurement, value: number | null): s
     switch (field) {
         case 'temperature_c':
             // Проверка температуры в Цельсиях (от -273.15 до 100)
-            if (value < -273.15 || value > 100) {
+            if (value < -273.15 || value > 200) {
                 return 'Температура должна быть в диапазоне от -273.15°C до 100°C';
             }
             break;
